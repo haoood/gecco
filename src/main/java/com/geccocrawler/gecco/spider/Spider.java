@@ -54,6 +54,9 @@ public class Spider implements Runnable {
 			if(request == null) {
 				//startScheduler
 				request = engine.getScheduler().out();
+				if(request == null) {
+					break;
+				}
 				start = true;
 			}
 			if(log.isDebugEnabled()) {
@@ -94,19 +97,17 @@ public class Spider implements Runnable {
 				}
 			} catch(DownloadException dex) {
 				log.error(request.getUrl() + " DOWNLOAD ERROR :" + dex.getMessage());
+			} catch(Exception ex) {
+				log.error(request.getUrl(), ex);
 			} finally {
 				if(response != null) {
-					try{
-						response.getRaw().close();
-					} catch(Exception ex) {
-						response.setRaw(null);
-					}
+					response.close();
 				}
 			}
 			//抓取间隔
 			interval();
 			//开始地址放入队尾重新抓取
-			if(start) {
+			if(start && engine.isLoop()) {
 				//如果是一个开始抓取请求，再返回开始队列中
 				engine.getScheduler().into(request);
 			}
@@ -117,11 +118,7 @@ public class Spider implements Runnable {
 		List<Pipeline> pipelines = context.getPipelines();
 		if(pipelines != null) {
 			for(Pipeline pipeline : pipelines) {
-				try {
-					pipeline.process(spiderBean);
-				} catch(Exception ex) {
-					ex.printStackTrace();
-				}
+				pipeline.process(spiderBean);
 			}
 		}
 	}
